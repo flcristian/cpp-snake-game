@@ -1,11 +1,19 @@
 #include "Headers/logic.h"
 
 int main(int argc, char* argv[]) {
+	Snake::FONT_PATH = argv[0];
+	size_t lastBackslashPos = Snake::FONT_PATH.find_last_of("\\");
+	if (lastBackslashPos != std::string::npos) {
+		Snake::FONT_PATH = Snake::FONT_PATH.substr(0, lastBackslashPos) + "/fonts/";
+	}
+
 	if (Snake::SDL_main() == 1) {
 		return 1;
 	}
 
 	initializeTiles();
+	placeSnake();
+	spawnFruit();
 
 	bool quit = false;
 	SDL_Event event;
@@ -24,16 +32,19 @@ int main(int argc, char* argv[]) {
 					quit = true;
 					break;
 				case SDLK_w:
-					Snake::orientation = "UP";
+					changeDirection(UP);
 					break;
 				case SDLK_a:
-					Snake::orientation = "LEFT";
+					changeDirection(LEFT);
 					break;
 				case SDLK_s:
-					Snake::orientation = "DOWN";
+					changeDirection(DOWN);
 					break;
 				case SDLK_d:
-					Snake::orientation = "RIGHT";
+					changeDirection(RIGHT);
+					break;
+				case SDLK_p:
+					Snake::pause = !Snake::pause;
 					break;
 				}
 				break;
@@ -44,9 +55,12 @@ int main(int argc, char* argv[]) {
 
 		// Game logic
 		currentTime = SDL_GetTicks();
+		int frameTime = 500;
 		uint32_t elapsedTime = currentTime - lastTime;
-		if (elapsedTime >= 1000) {
-			LOG(Snake::orientation);
+		if (elapsedTime >= frameTime) {
+			if (!Snake::pause) {
+				moveSnake();
+			}
 			lastTime = currentTime;
 		}
 
@@ -54,16 +68,15 @@ int main(int argc, char* argv[]) {
 		SDL_RenderClear(renderer);
 		renderGame();
 
+		checkIfLost();
 		SDL_RenderPresent(Snake::renderer);
 
-		int delay = elapsedTime - 1000;
+		int delay = elapsedTime - frameTime;
 		if (delay > 0) {
 			SDL_Delay(delay);
 		}
 	}
 
-	SDL_DestroyRenderer(Snake::renderer);
-	SDL_DestroyWindow(Snake::window);
-	SDL_Quit();
+	Snake::freeResources();
 	return 0;
 }
