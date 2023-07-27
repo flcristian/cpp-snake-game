@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	placeSnake();
 	spawnFruit();
 
-	bool quit = false;
+	bool quit = false, reset = false, displayed = false;
 	SDL_Event event;
 	uint32_t lastTime = SDL_GetTicks();
 	uint32_t currentTime = 0;
@@ -46,6 +46,9 @@ int main(int argc, char* argv[]) {
 				case SDLK_p:
 					Snake::pause = !Snake::pause;
 					break;
+				case SDLK_r:
+					reset = true;
+					break;
 				}
 				break;
 			case SDL_KEYUP:
@@ -65,10 +68,23 @@ int main(int argc, char* argv[]) {
 		}
 
 		// Renderer
-		SDL_RenderClear(renderer);
-		renderGame();
+		if (!lost) {
+			SDL_RenderClear(renderer);
+			renderGame();
+		}
+		else if (!displayed) {
+			displayLostGame();
+			displayed = true;
+		}
 
-		checkIfLost();
+		if (reset) {
+			resetGame();
+			reset = false;
+			displayed = false;
+		}
+		else {
+			checkIfLost();
+		}
 		SDL_RenderPresent(Snake::renderer);
 
 		int delay = elapsedTime - frameTime;

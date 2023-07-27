@@ -5,13 +5,10 @@
 #include <filesystem>
 #include <string>
 
-#define LOG(x) std::cout << x << std::endl
-
 namespace Snake {
 	// Creating random number generator
 	std::random_device rd;
 	std::mt19937 gen(rd());
-
 
 	// Creating window
 	char windowTitle[100] = "Snake Game";
@@ -41,15 +38,17 @@ namespace Snake {
 	// Game font
 	std::string CURRENT_PATH = std::filesystem::current_path().string();
 	std::string FONT_PATH;
-	std::string GAME_OVER_TEXT = "YOU LOST";
-	std::string SCORE_TEXT;
+	std::string GAME_OVER_TEXT = "YOU LOST", SCORE_TEXT, RESTART_TEXT = "Press R to restart";
 
 	TTF_Font* game_over_font;
 	TTF_Font* score_font;
+	TTF_Font* restart_font;
 	SDL_Surface* game_over_textSurface;
 	SDL_Texture* game_over_textTexture;
 	SDL_Surface* score_textSurface;
 	SDL_Texture* score_textTexture;
+	SDL_Surface* restart_textSurface;
+	SDL_Texture* restart_textTexture;
 
 	// Game score
 	int score = 0;
@@ -57,21 +56,37 @@ namespace Snake {
 	// Game states
 	bool pause = false, lost = false;
 
+	// Check if memory was cleared
+	bool memoryFreed = false;
+
 	// Checking for initialization failures
 	int main() {
 		TTF_Init();
 		return 0;
 	}
 
-	void freeResources() {
+	void cleanupLostGameResources() {
 		TTF_CloseFont(game_over_font);
+		TTF_CloseFont(restart_font);
 		TTF_CloseFont(score_font);
+		SDL_DestroyTexture(game_over_textTexture);
+		SDL_DestroyTexture(restart_textTexture);
+		SDL_DestroyTexture(score_textTexture);
+		SDL_FreeSurface(game_over_textSurface);
+		SDL_FreeSurface(score_textSurface);
+		SDL_FreeSurface(restart_textSurface);
+
+		memoryFreed = true;
+	}
+
+	void freeResources() {
+		if (!memoryFreed) {
+			cleanupLostGameResources();
+		}
+		
 		SDL_DestroyRenderer(renderer);
 		SDL_DestroyWindow(window);
-		SDL_DestroyTexture(game_over_textTexture);
-		SDL_FreeSurface(game_over_textSurface);
-		SDL_DestroyTexture(score_textTexture);
-		SDL_FreeSurface(score_textSurface);
+
 		TTF_Quit();
 		SDL_Quit();
 	}
