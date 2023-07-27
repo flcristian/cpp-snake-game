@@ -10,10 +10,11 @@ enum TileState {
 };
 
 int snakePosX[1000], snakePosY[1000];
-int snakeLength = 4;
+const int startLength = 3;
+int snakeLength = startLength;
 int fruitX, fruitY;
 
-int tileCount = 8;
+int tileCount = 9;
 TileState tiles[100][100];
 
 void spawnFruit() 
@@ -89,8 +90,6 @@ void changeDirection(Direction dir) {
 	case LEFT:
 		x--;
 		break;
-	default:
-		break;
 	}
 
 	if (snakePosX[0] + x != snakePosX[1] || snakePosY[0] + y != snakePosY[1]) {
@@ -99,6 +98,8 @@ void changeDirection(Direction dir) {
 }
 
 void displayLostGame() {
+	Snake::memoryFreed = false;
+
 	// Displaying overlay
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	SDL_Rect overlay = { 0, 0, 900, 900 };
@@ -106,9 +107,11 @@ void displayLostGame() {
 	SDL_RenderFillRect(renderer, &overlay);
 
 	// Obtaining font
-	game_over_font = TTF_OpenFont((FONT_PATH + "paladins.ttf").c_str(), 2000);
-	score_font = TTF_OpenFont((FONT_PATH + "paladins.ttf").c_str(), 2000);
-	TTF_SetFontHinting(game_over_font, TTF_HINTING_NORMAL);
+	std::string FONT_NAME = "snake.ttf";
+	game_over_font = TTF_OpenFont((FONT_PATH + FONT_NAME).c_str(), 500);
+	score_font = TTF_OpenFont((FONT_PATH + FONT_NAME).c_str(), 500);
+	restart_font = TTF_OpenFont((FONT_PATH + FONT_NAME).c_str(), 250);
+
 
 	// Displaying game over text
 	SDL_Color game_over_textColor = { 191, 17, 35, 240 };
@@ -116,20 +119,34 @@ void displayLostGame() {
 	game_over_textTexture = SDL_CreateTextureFromSurface(renderer, game_over_textSurface);
 	int game_over_textWidth = game_over_textSurface->w;
 	int game_over_textHeight = game_over_textSurface->h;
-	int game_over_centerX = (windowWidth - game_over_textWidth / 40) / 2;
-	int game_over_centerY = (windowHeight - game_over_textHeight / 40) / 2;
-	SDL_Rect gameOverRect = { game_over_centerX, game_over_centerY, game_over_textWidth / 40, game_over_textHeight / 40 };
+	int game_over_centerX = (windowWidth - game_over_textWidth / 10) / 2;
+	int game_over_centerY = (windowHeight - game_over_textHeight / 10) / 2 - 50;
+	SDL_Rect gameOverRect = { game_over_centerX, game_over_centerY, game_over_textWidth / 10, game_over_textHeight / 10 };
 	SDL_RenderCopy(renderer, game_over_textTexture, NULL, &gameOverRect);
 
 	// Displaying score
-	SDL_Color score_textColor = { 255, 255, 255, 240 };
+	SDL_Color score_textColor = { 255, 56, 59, 240 };
 	score_textSurface = TTF_RenderText_Blended(score_font, SCORE_TEXT.c_str(), score_textColor);
 	score_textTexture = SDL_CreateTextureFromSurface(renderer, score_textSurface);
 	int score_textWidth = score_textSurface->w;
 	int score_textHeight = score_textSurface->h;
-	int score_centerX = (windowWidth - score_textWidth / 60) / 2;
-	SDL_Rect scoreRect = { score_centerX, game_over_centerY + 50, score_textWidth / 60, score_textHeight / 60 };
+	int score_centerX = (windowWidth - score_textWidth / 15) / 2;
+	int score_centerY = game_over_centerY + 50;
+	SDL_Rect scoreRect = { score_centerX, score_centerY, score_textWidth / 15, score_textHeight / 15 };
 	SDL_RenderCopy(renderer, score_textTexture, NULL, &scoreRect);
+
+	// Displaying restart game
+	SDL_Color restart_textColor = { 255, 255, 255, 240 };
+	restart_textSurface = TTF_RenderText_Blended(restart_font, RESTART_TEXT.c_str(), restart_textColor);
+	restart_textTexture = SDL_CreateTextureFromSurface(renderer, restart_textSurface);
+	int restart_textWidth = restart_textSurface->w;
+	int restart_textHeight = restart_textSurface->h;
+	int restart_centerX = (windowWidth - restart_textWidth / 10) / 2;
+	int restart_centerY = score_centerY + 40;
+	SDL_Rect restartRect = { restart_centerX, restart_centerY, restart_textWidth / 10, restart_textHeight / 10 };
+	SDL_RenderCopy(renderer, restart_textTexture, NULL, &restartRect);
+
+	Snake::cleanupLostGameResources();
 }
 
 void checkIfLost() {
@@ -139,7 +156,6 @@ void checkIfLost() {
 		}
 		Snake::pause = true;
 		Snake::lost = true;
-		displayLostGame();
 	}
 }
 
@@ -168,12 +184,10 @@ void moveSnake()
 	case LEFT:
 		x--;
 		break;
-	default:
-		break;
 	}
 
 	// Storing snake's head positions for easy usage
-	int headX = snakePosX[0] + x, headY = snakePosY[0] + y;
+	int headX = (tileCount + snakePosX[0] + x) % tileCount, headY = (tileCount + snakePosY[0] + y) % tileCount;
 
 	if (snakeAteFood(headX, headY)) {
 		snakePosX[snakeLength] = snakePosX[snakeLength - 1];
@@ -187,12 +201,12 @@ void moveSnake()
 	}
 
 	// Check if the snake collides with itself or the arena borders
-	if (tiles[headX][headY] == SNAKEBODY || headX > tileCount - 1 || headY > tileCount - 1 || headX < 0 || headY < 0) {
+	if (tiles[headX][headY] == SNAKEBODY) {
 		snakeLength = 0;
 	}
 	else {
-		snakePosX[0] += x;
-		snakePosY[0] += y;
+		snakePosX[0] = headX;
+		snakePosY[0] = headY;
 	}
 
 	emptyTiles();
@@ -256,9 +270,28 @@ void renderGame()
 			case FRUIT:
 				renderFruit(i, j, size);
 				break;
-			default:
-				break;
 			}
 		}
 	}
+
+	if (lost) {
+		displayLostGame();
+	}
+}
+
+void resetGame() {
+	// Clearing board
+	clearEverything();
+
+	// Resetting board
+	snakeLength = startLength;
+	initializeTiles();
+	placeSnake();
+	spawnFruit();
+
+	// Reseting game state
+	Snake::score = 0;
+	Snake::pause = false;
+	Snake::lost = false;
+	Snake::orientation = UP;
 }
